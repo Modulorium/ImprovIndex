@@ -40,5 +40,5 @@ jobs:
 
     - name: Deploy to GitHub Pages
       run: |
-        ng deploy --base-href=/ --dir=dist/browser --cname=www.improvindex.org
+        ng deploy --base-href=/ --dir=dist/improv-index/browser --cname=www.improvindex.org
       working-directory: ./website
