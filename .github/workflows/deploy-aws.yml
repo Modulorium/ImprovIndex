@@ -1,4 +1,4 @@
-name: Deploy AWS Backend
+name: Deploy SAM Application
 
 on:
   workflow_dispatch:
@@ -44,11 +44,17 @@ jobs:
         run: sam build
         working-directory: ./aws
       
+      - name: Set deployment parameters
+        run: |
+          echo "STAGE_NAME=${{ github.event.inputs.environment }}" >> $GITHUB_ENV
+          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+            echo "ENV_SECRET_NAME=PROD_SECRETS" >> $GITHUB_ENV
+          else
+            echo "ENV_SECRET_NAME=INT_SECRETS" >> $GITHUB_ENV
+          fi
+        working-directory: ./aws
+      
       - name: Deploy SAM app
         run: |
-          if [ -n "${{ secrets.ACM_CERTIFICATE_ARN }}" ]; then
-            sam deploy --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --stack-name improv-index-api-${{ github.event.inputs.environment }} --capabilities CAPABILITY_IAM --parameter-overrides StageName=${{ github.event.inputs.environment }} CertificateArn=${{ secrets.ACM_CERTIFICATE_ARN }}
-          else
-            sam deploy --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --stack-name improv-index-api-${{ github.event.inputs.environment }} --capabilities CAPABILITY_IAM --parameter-overrides StageName=${{ github.event.inputs.environment }}
-          fi
+          sam deploy --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --stack-name improv-index-api-${{ github.event.inputs.environment }} --capabilities CAPABILITY_IAM --parameter-overrides StageName=$STAGE_NAME
         working-directory: ./aws

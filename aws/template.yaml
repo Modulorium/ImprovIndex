@@ -15,7 +15,7 @@ Parameters:
   CertificateArn:
     Type: String
     Description: ARN of ACM certificate for api.improvindex.org (must be in the same region as the deployment for REGIONAL endpoints)
-    Default: ""
+    Default: "arn:aws:acm:us-east-2:905418389433:certificate/0954ea4c-732a-4718-b547-5127071b5b18"
 
 Conditions:
   IsProd: !Equals
