@@ -1,0 +1,11 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "git.ignoreMissingGitWarning": false,
+    "git.autoRepositoryDetection": "openEditors"
+  }
+}

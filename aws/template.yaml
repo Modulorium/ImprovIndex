@@ -1,0 +1,155 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/awslabs/goformation/master/schema/sam.schema.json
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Improv Index API with Lambda functions
+
+Parameters:
+  StageName:
+    Type: String
+    Default: prod
+    AllowedValues:
+      - int
+      - prod
+    Description: Deployment stage (int or prod)
+  
+  CertificateArn:
+    Type: String
+    Description: ARN of ACM certificate for api.improvindex.org (must be in us-east-1 for EDGE endpoints)
+    Default: ""
+
+Conditions:
+  IsProd: !Equals
+    - !Ref StageName
+    - prod
+  HasCertificate: !Not [!Equals [!Ref CertificateArn, ""]]
+
+Resources:
+  # API Gateway
+  ImprovIndexApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: main
+      Name: !If
+        - IsProd
+        - improv-index-api
+        - !Sub improv-index-api-${StageName}
+      Description: Improv Index API for improv games and activities
+      MethodSettings:
+        - ResourcePath: /*
+          HttpMethod: '*'
+          ThrottlingRateLimit: 10
+          ThrottlingBurstLimit: 20
+      Cors:
+        AllowMethods: "'GET,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+
+  # Main Lambda Function
+  ImprovIndexFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !If
+        - IsProd
+        - improv-index-function
+        - !Sub improv-index-function-${StageName}
+      Handler: lambda.handler.lambda_handler
+      Runtime: python3.11
+      CodeUri: src/
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          ACTIVITIES_TABLE: !Ref ImprovActivities
+          STAGE: !Ref StageName
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+                - dynamodb:Scan
+                - dynamodb:Query
+              Resource:
+                - !GetAtt ImprovActivities.Arn
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+      Events:
+        # GET /activities (returns list of all improv activities)
+        GetActivities:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ImprovIndexApi
+            Path: /activities
+            Method: GET
+
+  # DynamoDB Tables
+  ImprovActivities:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub ImprovIndex-Activities-${StageName}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  # Custom Domain (if certificate provided)
+  ApiDomainName:
+    Type: AWS::ApiGateway::DomainName
+    Condition: HasCertificate
+    Properties:
+      DomainName: api.improvindex.org
+      CertificateArn: !Ref CertificateArn
+      EndpointConfiguration:
+        Types:
+          - EDGE
+      SecurityPolicy: TLS_1_2
+
+  ApiBasePathMapping:
+    Type: AWS::ApiGateway::BasePathMapping
+    Condition: HasCertificate
+    Properties:
+      DomainName: !Ref ApiDomainName
+      RestApiId: !Ref ImprovIndexApi
+      Stage: main
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub https://${ImprovIndexApi}.execute-api.${AWS::Region}.amazonaws.com/main/
+    Export:
+      Name: !Sub ${AWS::StackName}-ApiUrl
+
+  ApiId:
+    Description: API Gateway ID
+    Value: !Ref ImprovIndexApi
+    Export:
+      Name: !Sub ${AWS::StackName}-ApiId
+
+  ActivitiesTableName:
+    Description: Improv Activities Table Name
+    Value: !Ref ImprovActivities
+    Export:
+      Name: !Sub ${AWS::StackName}-ImprovActivities
+
+  AvailableEndpoints:
+    Description: Available API endpoints
+    Value: !Sub https://${ImprovIndexApi}.execute-api.${AWS::Region}.amazonaws.com/main/activities
+
+  CustomDomainUrl:
+    Condition: HasCertificate
+    Description: Custom domain URL (after DNS is configured)
+    Value: https://api.improvindex.org/activities
+
+  CustomDomainTarget:
+    Condition: HasCertificate
+    Description: CloudFront distribution domain to point api.improvindex.org to in Cloudflare
+    Value: !GetAtt ApiDomainName.DistributionDomainName
