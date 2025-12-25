@@ -14,7 +14,7 @@ Parameters:
   
   CertificateArn:
     Type: String
-    Description: ARN of ACM certificate for api.improvindex.org (must be in us-east-1 for EDGE endpoints)
+    Description: ARN of ACM certificate for api.improvindex.org (must be in the same region as the deployment for REGIONAL endpoints)
     Default: ""
 
 Conditions:
@@ -107,10 +107,10 @@ Resources:
     Condition: HasCertificate
     Properties:
       DomainName: api.improvindex.org
-      CertificateArn: !Ref CertificateArn
+      RegionalCertificateArn: !Ref CertificateArn
       EndpointConfiguration:
         Types:
-          - EDGE
+          - REGIONAL
       SecurityPolicy: TLS_1_2
 
   ApiBasePathMapping:
@@ -151,5 +151,5 @@ Outputs:
 
   CustomDomainTarget:
     Condition: HasCertificate
-    Description: CloudFront distribution domain to point api.improvindex.org to in Cloudflare
-    Value: !GetAtt ApiDomainName.DistributionDomainName
+    Description: Regional domain name to point api.improvindex.org to in Cloudflare
+    Value: !GetAtt ApiDomainName.RegionalDomainName
