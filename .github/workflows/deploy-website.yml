@@ -46,6 +46,8 @@ jobs:
         git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
 
     - name: Deploy to GitHub Pages
+      env:
+        GH_TOKEN: ${{ secrets.TOKEN }}
       run: |
-        ng deploy --base-href=/ --dir=dist/improv-index/browser --cname=www.improvindex.org
+        ng deploy --base-href=/ --dir=dist/improv-index/browser --cname=www.improvindex.org --repo=https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
       working-directory: ./website
