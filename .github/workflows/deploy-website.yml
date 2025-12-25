@@ -32,6 +32,13 @@ jobs:
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
 
+    - name: Debug build output
+      run: |
+        echo "Checking build output location..."
+        ls -la dist/
+        ls -la dist/improv-index/
+      working-directory: ./website
+
     - name: Authenticate with GitHub
       env:
         GH_TOKEN: ${{ secrets.TOKEN }}
