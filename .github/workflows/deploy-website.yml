@@ -9,10 +9,10 @@ jobs:
 
     steps:
     - name: Checkout Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v2
 
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v2
       with:
         node-version: '22'
 
@@ -32,13 +32,6 @@ jobs:
         git config user.name "GitHub Actions"
         git config user.email "actions@github.com"
 
-    - name: Debug build output
-      run: |
-        echo "Checking build output location..."
-        ls -la dist/
-        ls -la dist/improv-index/
-      working-directory: ./website
-
     - name: Authenticate with GitHub
       env:
         GH_TOKEN: ${{ secrets.TOKEN }}
@@ -46,8 +39,8 @@ jobs:
         git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
 
     - name: Deploy to GitHub Pages
-      env:
-        GH_TOKEN: ${{ secrets.TOKEN }}
-      run: |
-        ng deploy --base-href=/ --dir=dist/improv-index/browser --cname=www.improvindex.org --repo=https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git
-      working-directory: ./website
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        personal_token: ${{ secrets.TOKEN }}
+        publish_dir: ./website/dist/improv-index/browser
+        cname: www.improvindex.org
